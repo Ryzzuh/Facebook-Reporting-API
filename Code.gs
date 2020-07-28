@@ -1,38 +1,69 @@
 const BASE_ACCOUNTS_URL =
-  'https://graph.facebook.com/v7.0/627723218146471/adaccounts?fields=name&access_token='
+  'https://graph.facebook.com/v7.0/627723218146471/adaccounts?fields=name&access_token=' // long integer is 'me' user
+const CAMPAIGN_BASE_URL = 
+  'https://graph.facebook.com/v7.0/act_153599802245997/campaigns?fields=name' // for get accoutns campaigns
 
-let getAccounts = (url, data) => {
-  const endPoint = 'https://graph.facebook.com/v7.0/me/adaccounts?fields=name&access_token='
-  const text_data = url ? getEndPoint(url) : getEndPoint(endPoint + getAccessToken()) 
-  const json_result = JSON.parse(text_data)
-  const final_data = data ? final_data.push(json_result.data) : json_result.data
-  const next_page = json_result.paging.next
-  Logger.log(final_data)
-  Logger.log("------------------------------------------------------------")
-  if(next_page){getAccounts(next_page)}
-  let output_data = jsonto2dMatrix(final_data)
-  output2dMatrix(output_data, 'Sheet1')
+// change this to getEndPointData and remove BASE_ACCOUNTS_URL
+// put BASE_ACCOUNTS_URL in to a separate getAccounts() function
+const getAccounts = (url, data = []) => {
+  let currentPage = (url || BASE_ACCOUNTS_URL) + getAccessToken()
+  while (currentPage) {
+  const jsonResult = getJsonEndpoint(currentPage)
+  data.push(...jsonResult.data)
+  currentPage = jsonResult.paging.next
+}
+output2dMatrix(dataTo2dMatrix(data), 'Sheet4')
 }
 
+const getCampaigns = (accountId) => {
+  getAccounts(`https://graph.facebook.com/v7.0/${accountId}/campaigns?fields=name&access_token=`)
+}
 
-let jsonto2dMatrix = (json) => {
-  let headers = json.length ? [Object.keys(json[0])]: Object.keys(json)
-  let values = json.map((d)=>Object.values(d))
+const getCampaignInsights = (campaignId) => {
+  getAccounts(`https://graph.facebook.com/v7.0/${campaignId}/insights?fields=impressions&access_token=`)
+}
+
+const getCampaignInsightsByDay = (campaignId) => {
+  getAccounts(`https://graph.facebook.com/v7.0/${campaignId}/insights?fields=impressions&time_increment=1&access_token=`)
+}
+/////////////////////////
+///////// TESTS /////////
+/////////////////////////
+const test_getCampaignInsightsByDay = () => {
+  getCampaignInsightsByDay('6192607710369')
+}  
+
+const test_getCampaignInsights = () => {
+  getCampaignInsights('6192607710369')
+}
+
+const test_getCampaigns = () => {
+  getCampaigns('act_369769893147316')
+}
+
+/////////////////////////
+///////// UTILS /////////
+/////////////////////////
+const jsonto2dMatrix = (json) => {
+  const headers = json.length ? [Object.keys(json[0])]: Object.keys(json)
+  const values = json.map((d)=>Object.values(d))
   return headers.concat(values)
 }
 
-
-let getEndPoint = (url) => {
-  let req = UrlFetchApp.fetch(url)
-  let text_data = req.getContentText()
-  return text_data
+const getJsonEndpoint = (url) => {
+  const req = UrlFetchApp.fetch(url)
+  const text_data = req.getContentText()
+  return JSON.parse(text_data)
 }
 
+const dataTo2dMatrix = (data) => [Object.keys(data[0]), ...data.map(Object.values)]
 
-let output2dMatrix = (data, sheetName) => {
-  let sheet = SpreadsheetApp.getActive().getSheetByName(sheetName)
-  sheet.getRange(sheet.getLastRow()+1, 1, data.length, data[0].length).setValues(data)
-}
+const output2dMatrix = (dataMatrix, sheetName) =>
+  SpreadsheetApp.getActive()
+    .getSheetByName(sheetName)
+    .getRange(1, 1, dataMatrix.length, dataMatrix[0].length)
+    .setValues(dataMatrix)
+
 
 
 //////////////////////////////
